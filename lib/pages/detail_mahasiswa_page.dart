@@ -1,3 +1,6 @@
+
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../models/mahasiswa.dart';
@@ -5,6 +8,7 @@ import 'form_mahasiswa_page.dart';
 
 class DetailResult {
   final Mahasiswa? mahasiswa;
+
   const DetailResult.updated(Mahasiswa this.mahasiswa);
   const DetailResult.deleted() : mahasiswa = null;
 }
@@ -20,7 +24,8 @@ class DetailMahasiswaPage extends StatefulWidget {
   });
 
   @override
-  State<DetailMahasiswaPage> createState() => _DetailMahasiswaPageState();
+  State<DetailMahasiswaPage> createState() =>
+      _DetailMahasiswaPageState();
 }
 
 class _DetailMahasiswaPageState extends State<DetailMahasiswaPage> {
@@ -34,6 +39,7 @@ class _DetailMahasiswaPageState extends State<DetailMahasiswaPage> {
         ),
       ),
     );
+
     if (!mounted || result == null) return;
     Navigator.pop(context, DetailResult.updated(result));
   }
@@ -44,7 +50,8 @@ class _DetailMahasiswaPageState extends State<DetailMahasiswaPage> {
       builder: (context) => AlertDialog(
         title: const Text('Hapus mahasiswa?'),
         content: Text(
-          'Data ${widget.mahasiswa.nama} (${widget.mahasiswa.nim}) akan dihapus.',
+          'Data ${widget.mahasiswa.nama} '
+          '(${widget.mahasiswa.nim}) akan dihapus.',
         ),
         actions: [
           TextButton(
@@ -58,33 +65,161 @@ class _DetailMahasiswaPageState extends State<DetailMahasiswaPage> {
         ],
       ),
     );
+
     if (!mounted || confirmed != true) return;
     Navigator.pop(context, const DetailResult.deleted());
   }
 
+  Widget _bagian(String judul, List<Widget> isi) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              child: Text(
+                judul,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ),
+            ...isi,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _data(String label, String nilai) {
+    return ListTile(
+      dense: true,
+      title: Text(label),
+      subtitle: Text(nilai.isEmpty ? '-' : nilai),
+    );
+  }
+
+  String _tanggal(DateTime? tanggal) {
+    if (tanggal == null) return '-';
+
+    final hari = tanggal.day.toString().padLeft(2, '0');
+    final bulan = tanggal.month.toString().padLeft(2, '0');
+
+    return '$hari-$bulan-${tanggal.year}';
+  }
+
+  String _warna(int warna) {
+    return '#${(warna & 0xFFFFFF).toRadixString(16).toUpperCase().padLeft(6, '0')}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final mahasiswa = widget.mahasiswa;
+    final m = widget.mahasiswa;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Mahasiswa')),
+      appBar: AppBar(
+        title: const Text('Detail Mahasiswa'),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 640),
           child: ListView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             children: [
-              const Icon(Icons.school_outlined, size: 72),
-              const SizedBox(height: 24),
-              ListTile(
-                title: const Text('Nama Lengkap'),
-                subtitle: Text(mahasiswa.nama),
+              Center(
+                child: CircleAvatar(
+                  radius: 54,
+                  backgroundColor: Color(m.warnaProfil),
+                  backgroundImage: m.fotoPath != null &&
+                          File(m.fotoPath!).existsSync()
+                      ? FileImage(File(m.fotoPath!))
+                      : null,
+                  child: m.fotoPath == null ||
+                          !File(m.fotoPath!).existsSync()
+                      ? const Icon(Icons.person, size: 56)
+                      : null,
+                ),
               ),
-              ListTile(title: const Text('NIM'), subtitle: Text(mahasiswa.nim)),
-              ListTile(
-                title: const Text('Program Studi'),
-                subtitle: Text(mahasiswa.prodi),
+              const SizedBox(height: 12),
+              Center(
+                child: Text(
+                  m.nama.isEmpty ? 'Mahasiswa' : m.nama,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+
+              _bagian('Identitas Mahasiswa', [
+                _data('NIM', m.nim),
+                _data('Nama Lengkap', m.nama),
+                _data('Nama Panggilan', m.namaPanggilan),
+                _data('Program Studi', m.prodi),
+                _data('Email', m.email),
+                _data('No. HP', m.noHp),
+                // Password tidak ditampilkan untuk menjaga privasi.
+                _data(
+                  'Password Portal',
+                  m.passwordPortal.isEmpty ? '-' : '••••••••',
+                ),
+              ]),
+
+              _bagian('Data Pribadi', [
+                _data('Jenis Kelamin', m.jenisKelamin),
+                _data('Tanggal Lahir', _tanggal(m.tanggalLahir)),
+                _data('Tempat Lahir', m.tempatLahir),
+                _data('Agama', m.agama),
+                _data('Alamat', m.alamat),
+                _data('Provinsi', m.provinsi),
+                _data('Kota/Kabupaten', m.kotaKabupaten),
+              ]),
+
+              _bagian('Informasi Akademik', [
+                _data('Semester', m.semester.toString()),
+                _data('Kelas', m.kelas),
+                _data('Status Mahasiswa', m.statusMahasiswa),
+                _data('IPK', m.ipk.toStringAsFixed(2)),
+                _data(
+                  'Penerima Beasiswa',
+                  m.penerimaBeasiswa ? 'Ya' : 'Tidak',
+                ),
+                _data(
+                  'Bersedia Magang',
+                  m.bersediaMagang ? 'Ya' : 'Tidak',
+                ),
+                _data(
+                  'Minat',
+                  m.minat.isEmpty ? '-' : m.minat.join(', '),
+                ),
+              ]),
+
+              _bagian('Dokumen dan Preferensi', [
+                _data(
+                  'Foto Profil',
+                  m.fotoPath == null
+                      ? 'Belum ada foto'
+                      : m.fotoPath!.split(Platform.pathSeparator).last,
+                ),
+                _data(
+                  'Dokumen/KTM',
+                  m.dokumenPath == null
+                      ? 'Belum ada dokumen'
+                      : m.dokumenPath!.split(Platform.pathSeparator).last,
+                ),
+                _data('Warna Profil', _warna(m.warnaProfil)),
+                _data(
+                  'Persetujuan Data',
+                  m.persetujuanData ? 'Disetujui' : 'Belum disetujui',
+                ),
+              ]),
+
+              const SizedBox(height: 8),
               FilledButton.icon(
                 onPressed: _edit,
                 icon: const Icon(Icons.edit_outlined),
